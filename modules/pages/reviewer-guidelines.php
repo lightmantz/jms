@@ -18,7 +18,7 @@ if (!defined('SITE_URL')) {
     <link rel="stylesheet" href="/jms/css/style.css">
 </head>
 <body class="antialiased text-gray-700 font-['Inter']" style="background: #f6f9fc;">
-    <?php include '../../includes/header.php'; ?>
+    <?php include './includes/header.php'; ?>
     
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-8 md:p-10">
@@ -81,6 +81,6 @@ if (!defined('SITE_URL')) {
         </div>
     </div>
     
-    <?php include '../../includes/footer.php'; ?>
+    <?php include './includes/footer.php'; ?>
 </body>
 </html>
