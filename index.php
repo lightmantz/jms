@@ -63,6 +63,7 @@ $pageMap = [
     '403' => 'pages/403.php',
     '404' => 'pages/404.php',
     'article' => 'pages/article.php',
+    'download' => 'pages/download.php',
     
     // Dashboard pages - Role-specific dashboards
     'admin-dashboard' => 'admin/index.php',

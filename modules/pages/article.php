@@ -75,6 +75,9 @@ if (!empty($keywords)) {
 $citationCount = getCitations($articleId);
 $viewCount = getViews($articleId);
 $downloadCount = getDownloads($articleId);
+
+// Check if PDF exists
+$hasPdf = !empty($article['pdf_file']) || !empty($article['file_path']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -171,23 +174,33 @@ $downloadCount = getDownloads($articleId);
                         </div>
                     <?php endif; ?>
 
-                    <!-- Full Article (if available) -->
-                    <?php if (!empty($article['pdf_file']) || !empty($article['file_path'])): ?>
-                        <div class="mb-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                            <div class="flex items-center gap-4 flex-wrap">
-                                <i class="fas fa-file-pdf text-3xl text-red-500"></i>
-                                <div>
-                                    <p class="font-semibold text-[#0b2b3f]">Full Article PDF</p>
-                                    <p class="text-sm text-gray-500">Download the complete article</p>
+                    <!-- Full Article PDF Download -->
+                    <div class="mb-6">
+                        <h2 class="text-xl font-semibold text-[#0b2b3f] mb-3">Full Article</h2>
+                        <?php if ($hasPdf): ?>
+                            <div class="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100">
+                                <div class="flex items-center gap-4 flex-wrap">
+                                    <div class="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-file-pdf text-3xl text-red-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-[#0b2b3f]">Download PDF</p>
+                                        <p class="text-sm text-gray-500">Download the complete article in PDF format</p>
+                                    </div>
+                                    <a href="<?= SITE_URL ?>?page=download&id=<?= $article['id'] ?>" 
+                                       class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition flex items-center gap-2 shadow-md hover:shadow-lg">
+                                        <i class="fas fa-download"></i> Download PDF
+                                        <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">PDF</span>
+                                    </a>
                                 </div>
-                                <a href="<?= SITE_URL . ($article['pdf_file'] ?? $article['file_path']) ?>" 
-                                   target="_blank" 
-                                   class="ml-auto bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">
-                                    <i class="fas fa-download mr-2"></i> Download PDF
-                                </a>
                             </div>
-                        </div>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                                <i class="fas fa-file-pdf text-4xl text-gray-300 mb-2"></i>
+                                <p class="text-gray-500">PDF version is not available for this article.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
 
                     <!-- Additional Info -->
                     <div class="mt-8 pt-6 border-t border-gray-200">
@@ -224,16 +237,37 @@ $downloadCount = getDownloads($articleId);
                             <?php if ($article['issue_number']): ?>(<?= $article['issue_number'] ?>)<?php endif; ?>
                             <?php if ($article['doi']): ?>DOI: <?= htmlspecialchars($article['doi']) ?><?php endif; ?>
                         </p>
+                        <button onclick="copyCitation(this)" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                            <i class="fas fa-copy mr-1"></i> Copy citation
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Sidebar -->
             <div class="lg:col-span-1 space-y-6">
+                <!-- Download -->
+                <div class="bg-white rounded-xl shadow-card p-5 border border-gray-100/70">
+                    <h4 class="font-semibold text-[#0b2b3f] mb-3 flex items-center gap-2">
+                        <i class="fas fa-download text-indigo-500"></i> Download
+                    </h4>
+                    <?php if ($hasPdf): ?>
+                        <a href="<?= SITE_URL ?>?page=download&id=<?= $article['id'] ?>" 
+                           class="flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg transition shadow-sm">
+                            <i class="fas fa-file-pdf"></i> Download PDF
+                        </a>
+                        <p class="text-xs text-gray-400 mt-2 text-center"><?= number_format($downloadCount) ?> downloads</p>
+                    <?php else: ?>
+                        <p class="text-sm text-gray-500 text-center">PDF not available</p>
+                    <?php endif; ?>
+                </div>
+
                 <!-- Share -->
                 <div class="bg-white rounded-xl shadow-card p-5 border border-gray-100/70">
-                    <h4 class="font-semibold text-[#0b2b3f] mb-3">Share this article</h4>
-                    <div class="flex gap-3">
+                    <h4 class="font-semibold text-[#0b2b3f] mb-3 flex items-center gap-2">
+                        <i class="fas fa-share-alt text-indigo-500"></i> Share
+                    </h4>
+                    <div class="flex gap-3 justify-center">
                         <a href="https://twitter.com/intent/tweet?text=<?= urlencode($article['title']) ?>&url=<?= urlencode(SITE_URL . '?page=article&id=' . $article['id']) ?>" 
                            target="_blank" class="text-gray-400 hover:text-blue-400 transition text-xl">
                             <i class="fab fa-twitter"></i>
@@ -256,7 +290,9 @@ $downloadCount = getDownloads($articleId);
                 <!-- Related Articles -->
                 <?php if (!empty($relatedArticles)): ?>
                     <div class="bg-white rounded-xl shadow-card p-5 border border-gray-100/70">
-                        <h4 class="font-semibold text-[#0b2b3f] mb-3">Related Articles</h4>
+                        <h4 class="font-semibold text-[#0b2b3f] mb-3 flex items-center gap-2">
+                            <i class="fas fa-link text-indigo-500"></i> Related Articles
+                        </h4>
                         <div class="space-y-3">
                             <?php foreach ($relatedArticles as $related): ?>
                                 <div class="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
@@ -272,6 +308,33 @@ $downloadCount = getDownloads($articleId);
             </div>
         </div>
     </div>
+
+    <script>
+    function copyCitation(button) {
+        // Get the citation text from the parent element
+        const citationElement = button.parentElement.querySelector('p');
+        const citationText = citationElement.textContent.trim();
+        
+        // Create a temporary input element
+        const tempInput = document.createElement('input');
+        tempInput.value = citationText;
+        document.body.appendChild(tempInput);
+        
+        // Select and copy the text
+        tempInput.select();
+        document.execCommand('copy');
+        
+        // Remove the temporary element
+        document.body.removeChild(tempInput);
+        
+        // Show feedback
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check mr-1"></i> Copied!';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+        }, 2000);
+    }
+    </script>
 
     <?php include INCLUDES_PATH . 'footer.php'; ?>
 </body>

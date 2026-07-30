@@ -66,12 +66,43 @@ if (isset($_GET['message']) && $_GET['message'] === 'logged_out') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="<?= SITE_URL ?>css/style.css">
     <style>
-        .login-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-            border: 1px solid #f0f0f0;
+        /* Background Image */
+        body {
+            background-image: url('<?= SITE_URL ?>resources/images/login.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+            position: relative;
         }
+        
+        /* Overlay for better readability */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(11, 43, 63, 0.7);
+            z-index: 0;
+        }
+        
+        /* Ensure content is above overlay */
+        .login-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
         .input-icon {
             position: absolute;
             left: 12px;
@@ -79,6 +110,7 @@ if (isset($_GET['message']) && $_GET['message'] === 'logged_out') {
             transform: translateY(-50%);
             color: #9ca3af;
         }
+        
         .input-field {
             width: 100%;
             padding: 10px 12px 10px 40px;
@@ -86,12 +118,16 @@ if (isset($_GET['message']) && $_GET['message'] === 'logged_out') {
             border-radius: 8px;
             transition: all 0.2s;
             font-size: 14px;
+            background: rgba(255, 255, 255, 0.9);
         }
+        
         .input-field:focus {
             outline: none;
             border-color: #4f46e5;
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: white;
         }
+        
         .btn-primary {
             background: #4f46e5;
             color: white;
@@ -103,28 +139,73 @@ if (isset($_GET['message']) && $_GET['message'] === 'logged_out') {
             cursor: pointer;
             width: 100%;
         }
+        
         .btn-primary:hover {
             background: #4338ca;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
         }
+        
         .btn-primary:active {
             transform: translateY(0);
         }
+        
+        .logo-container {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            padding: 12px;
+            border: 3px solid rgba(79, 70, 229, 0.3);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .login-title {
+            color: #0b2b3f;
+            text-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+        }
+        
+        .login-subtitle {
+            color: #64748b;
+        }
+        
+        /* Demo credentials styling */
+        .demo-credentials {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .demo-credentials p {
+            margin: 2px 0;
+        }
     </style>
 </head>
-<body class="antialiased text-gray-700 font-['Inter']" style="background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%); min-height: 100vh;">
+<body>
     <?php include INCLUDES_PATH . 'header.php'; ?>
     
-    <div class="max-w-md mx-auto px-4 sm:px-6 py-12">
+    <div class="login-wrapper max-w-md mx-auto px-4 sm:px-6 py-12">
         <div class="login-card p-8">
-            <!-- Logo/Icon -->
+            <!-- Logo -->
             <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fas fa-sign-in-alt text-2xl text-indigo-600"></i>
+                <div class="logo-container">
+                    <img src="<?= SITE_URL ?>resources/images/tjr.png" alt="TIRP Logo">
                 </div>
-                <h1 class="text-2xl font-bold text-[#0b2b3f]">Welcome Back</h1>
-                <p class="text-gray-500 text-sm mt-1">Sign in to your TIRP account</p>
+                <h1 class="text-2xl font-bold login-title">Welcome Back</h1>
+                <p class="text-gray-500 text-sm mt-1 login-subtitle">Sign in to your TJRP account</p>
             </div>
             
             <!-- Success Message -->
@@ -192,12 +273,11 @@ if (isset($_GET['message']) && $_GET['message'] === 'logged_out') {
         </div>
         
         <!-- Demo Credentials (Development Only) -->
-        <div class="text-center mt-6 text-xs text-gray-400">
-            <p class="mb-1">Demo credentials:</p>
-            <p>Admin: admin@jms.com / admin123</p>
-            <p>Admin: admin@tirp.com / admin123</p>
-            <p>Author: author@jms.com / admin123</p>
-            <p>Reviewer: reviewer@jms.com / admin123</p>
+        <div class="text-center mt-6 demo-credentials">
+            <p class="text-xs opacity-75 mb-1">Demo credentials:</p>
+            <p class="text-xs">Admin: admin@jms.com / admin123</p>
+            <p class="text-xs">Author: author@jms.com / admin123</p>
+            <p class="text-xs">Reviewer: reviewer@jms.com / admin123</p>
         </div>
     </div>
     
