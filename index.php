@@ -32,8 +32,16 @@ $page = str_replace(['..', '/', '\\'], '', $page);
 
 // Map page names to their actual paths
 $pageMap = [
-    // Pages in /modules/pages/
+    // Pages in their own directories (with index.php)
     'home' => 'home/index.php',
+    'about' => 'about/index.php',  // FIXED: Points to /modules/about/index.php
+    'editorial' => 'editorial/index.php',
+    'register' => 'register/index.php',
+    'login' => 'login/index.php',
+    'archive' => 'archive/index.php',
+    'search' => 'search/index.php',
+    
+    // Pages in /modules/pages/
     'faq' => 'pages/faq.php',
     'contact' => 'pages/contact.php',
     'submit' => 'pages/submit.php',
@@ -55,7 +63,6 @@ $pageMap = [
     '403' => 'pages/403.php',
     '404' => 'pages/404.php',
     'article' => 'pages/article.php',
-    'about' => 'pages/about.php',
     
     // Dashboard pages - Role-specific dashboards
     'admin-dashboard' => 'admin/index.php',
@@ -70,13 +77,6 @@ $pageMap = [
     'reviewer' => 'reviewer/index.php',
     'editor' => 'editor/index.php',
     'publisher' => 'publisher/index.php',
-    
-    // Pages in their own directories (with index.php)
-    'editorial' => 'editorial/index.php',
-    'register' => 'register/index.php',
-    'login' => 'login/index.php',
-    'archive' => 'archive/index.php',
-    'search' => 'search/index.php',
 ];
 
 // Check if page exists in map
