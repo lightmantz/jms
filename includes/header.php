@@ -16,7 +16,7 @@ $unreadCount = $currentUser ? getUnreadNotifications($currentUser['id']) : 0;
                 <img src="<?= SITE_URL ?>resources/images/tjr.png" alt="TIRP Logo" class="h-10 w-auto object-contain">
                 <div class="flex flex-col">
                     <span class="text-2xl font-bold text-[#0b2b3f] tracking-tight leading-none">TIRP</span>
-                    <span class="hidden sm:inline text-xs font-medium text-gray-500 leading-tight">Tanzania Journal of Rehabilitation Practice</span>
+                    <span class="hidden sm:inline text-xs font-medium text-gray-500 leading-tight">Tanzania Journal of Rehabilitation</span>
                 </div>
             </a>
         </div>
@@ -26,6 +26,7 @@ $unreadCount = $currentUser ? getUnreadNotifications($currentUser['id']) : 0;
             <a href="<?= SITE_URL ?>?page=editorial" class="text-gray-500 hover:text-[#0b2b3f] transition">Editorial Board</a>
             <a href="<?= SITE_URL ?>?page=archive" class="text-gray-500 hover:text-[#0b2b3f] transition">Archive</a>
             <a href="<?= SITE_URL ?>?page=search" class="text-gray-500 hover:text-[#0b2b3f] transition"><i class="fas fa-search mr-1 text-xs"></i> Search</a>
+            <a href="<?= SITE_URL ?>?page=contact" class="text-gray-500 hover:text-[#0b2b3f] transition"><i class="fas fa-envelope mr-1 text-xs"></i> Contact</a>
             
             <?php if (isLoggedIn()): ?>
                 <div class="relative group">
