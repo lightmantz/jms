@@ -1,0 +1,81 @@
+/* css/style.css */
+.shadow-card {
+    box-shadow: 0 8px 20px rgba(0,20,40,0.04);
+}
+
+.border-tirp {
+    border-color: #1a4d6b;
+}
+
+.bg-tirp {
+    background-color: #0b2b3f;
+}
+
+.bg-tirp-light {
+    background-color: #e7edf2;
+}
+
+.text-tirp {
+    color: #0b2b3f;
+}
+
+.hover-scale {
+    transition: all 0.15s ease;
+}
+
+.hover-scale:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0,20,40,0.08);
+}
+
+.pill {
+    border-radius: 999px;
+}
+
+/* Dropdown hover */
+.group:hover .group-hover\:block {
+    display: block;
+}
+
+/* Form focus styles */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+}
+
+/* Transitions */
+.transition {
+    transition: all 0.2s ease;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c7cd;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a0a8b0;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* Responsive tweaks */
+@media (max-width: 640px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}

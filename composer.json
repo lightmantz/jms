@@ -1,0 +1,6 @@
+{
+    "require": {
+        "smalot/pdfparser": "^2.12",
+        "tecnickcom/tcpdf": "^7.0"
+    }
+}
