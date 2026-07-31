@@ -1,5 +1,6 @@
 <?php
-// includes/auth.php - Authentication functions
+// includes/auth.php - Authentication functions ONLY
+// All core functions should be in functions.php
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -66,11 +67,6 @@ function loginUser($user) {
  * Logout user
  */
 function logoutUser() {
-    // Make sure session is started
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    
     // Clear session
     $_SESSION = array();
     
@@ -79,9 +75,7 @@ function logoutUser() {
         setcookie('remember_token', '', time() - 3600, '/');
     }
     
-    // Destroy the session
     session_destroy();
-    
     // Start new session for messages
     session_start();
 }
@@ -107,21 +101,6 @@ function getDashboardUrl($user) {
         case 'reader':
         default:
             return $baseUrl . '?page=home';
-    }
-}
-
-/**
- * Get unread notifications count
- */
-function getUnreadNotifications($userId) {
-    try {
-        $db = getDB();
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0");
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch();
-        return $result ? $result['count'] : 0;
-    } catch (PDOException $e) {
-        return 0;
     }
 }
 
@@ -268,57 +247,6 @@ function requireAuthor() {
  */
 function requirePublisher() {
     return requireRole(['admin', 'publisher']);
-}
-
-/**
- * Get user by ID
- */
-function getUserById($id) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([$id]);
-    return $stmt->fetch();
-}
-
-/**
- * Get users by role
- */
-function getUsersByRole($role) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM users WHERE role = ? AND is_active = 1 ORDER BY full_name");
-    $stmt->execute([$role]);
-    return $stmt->fetchAll();
-}
-
-/**
- * Get all users
- */
-function getAllUsers($limit = null, $offset = 0) {
-    $db = getDB();
-    $sql = "SELECT * FROM users ORDER BY created_at DESC";
-    if ($limit) {
-        $sql .= " LIMIT " . intval($limit) . " OFFSET " . intval($offset);
-    }
-    $stmt = $db->query($sql);
-    return $stmt->fetchAll();
-}
-
-/**
- * Count total users
- */
-function countUsers() {
-    $db = getDB();
-    $stmt = $db->query("SELECT COUNT(*) as count FROM users");
-    $result = $stmt->fetch();
-    return $result ? $result['count'] : 0;
-}
-
-/**
- * Get user's full name
- */
-function getUserFullName($userId) {
-    $user = getUserById($userId);
-    return $user ? $user['full_name'] : 'Unknown User';
 }
 
 /**

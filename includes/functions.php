@@ -125,6 +125,25 @@ function getNotifications($userId, $limit = 10) {
 }
 
 /**
+ * Get unread notifications count for a user
+ * This is the missing function that was causing the error
+ */
+function getUnreadNotifications($userId) {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("
+            SELECT COUNT(*) as count FROM notifications 
+            WHERE user_id = ? AND is_read = 0
+        ");
+        $stmt->execute([$userId]);
+        $result = $stmt->fetch();
+        return $result ? (int)$result['count'] : 0;
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
  * Log user action
  */
 function logAction($userId, $action, $tableName = null, $recordId = null) {
