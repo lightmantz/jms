@@ -204,16 +204,27 @@ $sidebarNews = $stmt->fetchAll();
         
         /* Demo credentials styling */
         .demo-credentials {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(5px);
             border-radius: 12px;
             padding: 12px 16px;
-            color: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #1a1a1a;
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
         
-        .demo-credentials p {
-            margin: 2px 0;
+        .demo-credentials .label {
+            color: #4a4a4a;
+            font-weight: 500;
+        }
+        
+        .demo-credentials .value {
+            color: #1a1a1a;
+            font-weight: 400;
+        }
+        
+        .demo-credentials .title {
+            color: #333333;
+            font-weight: 600;
         }
         
         /* Sidebar Panel Styles */
@@ -347,12 +358,19 @@ $sidebarNews = $stmt->fetchAll();
                         </a>
                     </p>
                     
-                    <!-- Demo Credentials (Development Only) - Mobile -->
-                    <div class="text-center mt-6 demo-credentials lg:hidden">
-                        <p class="text-xs opacity-75 mb-1">Demo credentials:</p>
-                        <p class="text-xs">Admin: admin@jms.com / admin123</p>
-                        <p class="text-xs">Author: author@jms.com / admin123</p>
-                        <p class="text-xs">Reviewer: reviewer@jms.com / admin123</p>
+                    <!-- Demo Credentials (Development Only) -->
+                    <div class="mt-6 demo-credentials">
+                        <p class="text-xs font-semibold title mb-2 text-center">Demo Credentials</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                            <div class="label">Admin:</div>
+                            <div class="value">admin@jms.com / admin123</div>
+                            <div class="label">Author:</div>
+                            <div class="value">author@jms.com / author123</div>
+                            <div class="label">Reviewer:</div>
+                            <div class="value">reviewer@jms.com / reviewer123</div>
+                            <div class="label">Publisher:</div>
+                            <div class="value">publisher@jms.com / publisher123</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -369,22 +387,18 @@ $sidebarNews = $stmt->fetchAll();
                     <!-- Stats -->
                     <div>
                         <p class="info-title">Journal Statistics</p>
-                        <div class="grid grid-cols-2 gap-3 mt-2">
+                        <div class="grid grid-cols-1 gap-3 mt-2">
                             <div class="bg-white/5 rounded-lg p-3 text-center">
                                 <p class="text-2xl font-bold text-white"><?= $stats['total_articles'] ?? 0 ?></p>
-                                <p class="text-xs text-white/60">Articles</p>
-                            </div>
-                            <div class="bg-white/5 rounded-lg p-3 text-center">
-                                <p class="text-2xl font-bold text-white"><?= $stats['total_users'] ?? 0 ?></p>
-                                <p class="text-xs text-white/60">Users</p>
+                                <p class="text-xs text-white/60">Total Articles</p>
                             </div>
                             <div class="bg-white/5 rounded-lg p-3 text-center">
                                 <p class="text-2xl font-bold text-white"><?= number_format($stats['total_views'] ?? 0) ?></p>
-                                <p class="text-xs text-white/60">Views</p>
+                                <p class="text-xs text-white/60">Total Views</p>
                             </div>
                             <div class="bg-white/5 rounded-lg p-3 text-center">
                                 <p class="text-2xl font-bold text-white"><?= $stats['submissions_this_month'] ?? 0 ?></p>
-                                <p class="text-xs text-white/60">Submissions</p>
+                                <p class="text-xs text-white/60">Submissions (This Month)</p>
                             </div>
                         </div>
                     </div>

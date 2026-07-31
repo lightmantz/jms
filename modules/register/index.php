@@ -11,9 +11,58 @@ if (isLoggedIn()) {
 $error = '';
 $success = '';
 
+// Handle registration
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Registration logic here
-    // ...
+    $full_name = trim($_POST['full_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $institution = trim($_POST['institution'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? 'author';
+    $agree_terms = isset($_POST['agree_terms']) ? true : false;
+    
+    // Validation
+    if (empty($full_name)) {
+        $error = 'Please enter your full name.';
+    } elseif (empty($email)) {
+        $error = 'Please enter your email address.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid email address.';
+    } elseif (empty($password)) {
+        $error = 'Please enter a password.';
+    } elseif (strlen($password) < 8) {
+        $error = 'Password must be at least 8 characters long.';
+    } elseif (!$agree_terms) {
+        $error = 'Please agree to the Terms and Conditions.';
+    } else {
+        // Check if email already exists
+        $db = getDB();
+        $stmt = $db->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) {
+            $error = 'This email is already registered. Please login or use a different email.';
+        } else {
+            // Hash password
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            
+            // Insert user
+            $stmt = $db->prepare("
+                INSERT INTO users (full_name, email, password_hash, role, institution, is_active, created_at) 
+                VALUES (?, ?, ?, ?, ?, 1, NOW())
+            ");
+            
+            if ($stmt->execute([$full_name, $email, $hashedPassword, $role, $institution])) {
+                $success = 'Registration successful! You can now login to your account.';
+                
+                // Log the registration
+                logAction($db->lastInsertId(), 'register', 'users', $db->lastInsertId());
+                
+                // Clear form data
+                $_POST = [];
+            } else {
+                $error = 'Registration failed. Please try again.';
+            }
+        }
+    }
 }
 
 // Get sidebar data for right panel
@@ -158,6 +207,17 @@ $sidebarNews = $stmt->fetchAll();
             color: #64748b;
         }
         
+        /* Custom select styling */
+        .custom-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+        
         /* Sidebar Panel Styles */
         .info-panel {
             background: rgba(255, 255, 255, 0.12);
@@ -235,27 +295,31 @@ $sidebarNews = $stmt->fetchAll();
                     <?php if ($success): ?>
                         <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
                             <i class="fas fa-check-circle mr-2"></i> <?= htmlspecialchars($success) ?>
+                            <p class="text-sm mt-1">You can now <a href="<?= SITE_URL ?>?page=login" class="underline font-medium">login here</a>.</p>
                         </div>
                     <?php endif; ?>
                     
+                    <?php if (!$success): ?>
                     <form method="POST" action="" class="space-y-4">
                         <div>
-                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
                             <div class="relative">
                                 <i class="fas fa-user input-icon"></i>
                                 <input type="text" id="full_name" name="full_name" required 
                                        class="input-field"
-                                       placeholder="John Doe">
+                                       placeholder="John Doe"
+                                       value="<?= isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : '' ?>">
                             </div>
                         </div>
                         
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
                             <div class="relative">
                                 <i class="fas fa-envelope input-icon"></i>
                                 <input type="email" id="email" name="email" required 
                                        class="input-field"
-                                       placeholder="you@example.com">
+                                       placeholder="you@example.com"
+                                       value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
                             </div>
                         </div>
                         
@@ -265,12 +329,26 @@ $sidebarNews = $stmt->fetchAll();
                                 <i class="fas fa-building input-icon"></i>
                                 <input type="text" id="institution" name="institution" 
                                        class="input-field"
-                                       placeholder="Your institution">
+                                       placeholder="Your institution"
+                                       value="<?= isset($_POST['institution']) ? htmlspecialchars($_POST['institution']) : '' ?>">
                             </div>
                         </div>
                         
                         <div>
-                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Register As <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <i class="fas fa-user-tag input-icon"></i>
+                                <select id="role" name="role" required class="input-field custom-select">
+                                    <option value="author" <?= (isset($_POST['role']) && $_POST['role'] == 'author') ? 'selected' : '' ?>>Author</option>
+                                    <option value="reviewer" <?= (isset($_POST['role']) && $_POST['role'] == 'reviewer') ? 'selected' : '' ?>>Reviewer</option>
+                                    <option value="publisher" <?= (isset($_POST['role']) && $_POST['role'] == 'publisher') ? 'selected' : '' ?>>Publisher</option>
+                                </select>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Select the role that best describes your relationship with the journal</p>
+                        </div>
+                        
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
                             <div class="relative">
                                 <i class="fas fa-lock input-icon"></i>
                                 <input type="password" id="password" name="password" required 
@@ -283,10 +361,22 @@ $sidebarNews = $stmt->fetchAll();
                             <p class="text-xs text-gray-500 mt-1">Password must be at least 8 characters long</p>
                         </div>
                         
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input type="checkbox" id="agree_terms" name="agree_terms" required 
+                                       class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            </div>
+                            <label for="agree_terms" class="ml-2 text-sm text-gray-600">
+                                I agree to the <a href="<?= SITE_URL ?>?page=terms" class="text-indigo-600 hover:underline">Terms and Conditions</a> and <a href="<?= SITE_URL ?>?page=privacy-policy" class="text-indigo-600 hover:underline">Privacy Policy</a>.
+                                <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        
                         <button type="submit" class="btn-primary">
                             <i class="fas fa-user-plus mr-2"></i> Create Account
                         </button>
                     </form>
+                    <?php endif; ?>
                     
                     <p class="text-center text-sm text-gray-600 mt-6">
                         Already have an account? 
@@ -304,25 +394,40 @@ $sidebarNews = $stmt->fetchAll();
                         </h4>
                     </div>
 
+                    <!-- Role Descriptions -->
+                    <div>
+                        <p class="info-title">Account Types</p>
+                        <div class="space-y-2 mt-2">
+                            <div class="info-item">
+                                <p class="info-value">📝 <strong>Author</strong></p>
+                                <p class="text-xs text-white/50">Submit manuscripts, track submissions, and respond to reviews</p>
+                            </div>
+                            <div class="info-item">
+                                <p class="info-value">🔍 <strong>Reviewer</strong></p>
+                                <p class="text-xs text-white/50">Review manuscripts, provide feedback, and evaluate submissions</p>
+                            </div>
+                            <div class="info-item">
+                                <p class="info-value">📚 <strong>Publisher</strong></p>
+                                <p class="text-xs text-white/50">Manage published articles, issues, and journal content</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Stats -->
                     <div>
                         <p class="info-title">Journal Statistics</p>
-                        <div class="grid grid-cols-2 gap-3 mt-2">
+                        <div class="grid grid-cols-1 gap-3 mt-2">
                             <div class="bg-white/5 rounded-lg p-3 text-center">
                                 <p class="text-2xl font-bold text-white"><?= $stats['total_articles'] ?? 0 ?></p>
-                                <p class="text-xs text-white/60">Articles</p>
-                            </div>
-                            <div class="bg-white/5 rounded-lg p-3 text-center">
-                                <p class="text-2xl font-bold text-white"><?= $stats['total_users'] ?? 0 ?></p>
-                                <p class="text-xs text-white/60">Users</p>
+                                <p class="text-xs text-white/60">Total Articles</p>
                             </div>
                             <div class="bg-white/5 rounded-lg p-3 text-center">
                                 <p class="text-2xl font-bold text-white"><?= number_format($stats['total_views'] ?? 0) ?></p>
-                                <p class="text-xs text-white/60">Views</p>
+                                <p class="text-xs text-white/60">Total Views</p>
                             </div>
                             <div class="bg-white/5 rounded-lg p-3 text-center">
                                 <p class="text-2xl font-bold text-white"><?= $stats['submissions_this_month'] ?? 0 ?></p>
-                                <p class="text-xs text-white/60">Submissions</p>
+                                <p class="text-xs text-white/60">Submissions (This Month)</p>
                             </div>
                         </div>
                     </div>
