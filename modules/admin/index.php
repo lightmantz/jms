@@ -25,7 +25,8 @@ $validPages = [
     'journal-settings', 'volumes', 'issues', 'sections',
     'submissions', 'manuscript', 'assign', 'publish',
     'editors', 'reviewers', 'editorial-board', 'assignments',
-    'reviewer-view',  // Added comma here
+    'reviewer-view',
+    'user-view',
     'copyediting', 'proofreading', 'layout', 'doi', 'publication',
     'articles', 'article-view', 'create-article', 'create-submission',
     'users', 'roles',
@@ -56,7 +57,8 @@ if (in_array($action, $validPages) && $action != 'dashboard') {
         'publish' => 'publish.php',
         'editors' => 'editors.php',
         'reviewers' => 'reviewers.php',
-        'reviewer-view' => 'reviewer-view.php',  // Added comma here
+        'reviewer-view' => 'reviewer-view.php',
+        'user-view' => 'user-view.php',
         'editorial-board' => 'editorial-board.php',
         'assignments' => 'assignments.php',
         'copyediting' => 'copyediting.php',
@@ -95,7 +97,7 @@ if (in_array($action, $validPages) && $action != 'dashboard') {
         $possibleFile = __DIR__ . '/pages/settings.php';
     } elseif ($action == 'logs' && in_array($subaction, ['activity', 'audit', 'system'])) {
         $possibleFile = __DIR__ . '/pages/logs.php';
-    } elseif ($action == 'users' && in_array($subaction, ['authors', 'editors', 'reviewers', 'staff', 'all'])) {
+    } elseif ($action == 'users' && in_array($subaction, ['authors', 'editors', 'reviewers', 'staff', 'all', 'pending'])) {
         $possibleFile = __DIR__ . '/pages/users.php';
     } elseif (isset($actionMap[$action])) {
         $possibleFile = __DIR__ . '/pages/' . $actionMap[$action];
@@ -508,6 +510,10 @@ $roleColors = [
                     <a href="/jms/admin?action=users&subaction=staff" class="nav-item <?= ($action == 'users' && $subaction == 'staff') ? 'active' : '' ?>">
                         <i class="fas fa-user-cog"></i> Staff
                         <span class="badge"><?= $staffCount ?? 0 ?></span>
+                    </a>
+                    <a href="/jms/admin?action=users&subaction=pending" class="nav-item <?= ($action == 'users' && $subaction == 'pending') ? 'active' : '' ?>">
+                        <i class="fas fa-clock"></i> Pending
+                        <span class="badge"><?= $pendingCount ?? 0 ?></span>
                     </a>
                     <a href="/jms/admin?action=roles" class="nav-item <?= $action == 'roles' ? 'active' : '' ?>">
                         <i class="fas fa-lock"></i> Roles & Permissions
