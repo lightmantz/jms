@@ -78,6 +78,9 @@ $pageMap = [
     'reviewer' => 'reviewer/index.php',
     'editor' => 'editor/index.php',
     'publisher' => 'publisher/index.php',
+
+    // News Section page
+'news' => 'pages/news.php',
 ];
 
 // Check if page exists in map

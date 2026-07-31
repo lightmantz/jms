@@ -974,4 +974,77 @@ function getCitations($manuscriptId) {
         return rand(0, 20);
     }
 }
+
+function getManuscriptReviews($manuscriptId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT r.*, u.full_name as reviewer_name, u.email as reviewer_email
+        FROM reviews r
+        LEFT JOIN users u ON r.reviewer_id = u.id
+        WHERE r.manuscript_id = ?
+        ORDER BY r.created_at DESC
+    ");
+    $stmt->execute([$manuscriptId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Get reviewer assignments for a manuscript
+ */
+function getManuscriptReviewerAssignments($manuscriptId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT r.*, u.full_name as reviewer_name, u.email as reviewer_email
+        FROM reviewer_assignments r
+        LEFT JOIN users u ON r.reviewer_id = u.id
+        WHERE r.manuscript_id = ?
+        ORDER BY r.created_at DESC
+    ");
+    $stmt->execute([$manuscriptId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Get manuscript revisions
+ */
+function getManuscriptRevisions($manuscriptId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT * FROM revisions 
+        WHERE manuscript_id = ?
+        ORDER BY submitted_at DESC
+    ");
+    $stmt->execute([$manuscriptId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Get manuscript communication
+ */
+function getManuscriptCommunications($manuscriptId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT c.*, u.full_name as sender_name
+        FROM communications c
+        LEFT JOIN users u ON c.sender_id = u.id
+        WHERE c.manuscript_id = ?
+        ORDER BY c.created_at ASC
+    ");
+    $stmt->execute([$manuscriptId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Get manuscript files
+ */
+function getManuscriptFiles($manuscriptId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT * FROM manuscript_files 
+        WHERE manuscript_id = ?
+        ORDER BY uploaded_at DESC
+    ");
+    $stmt->execute([$manuscriptId]);
+    return $stmt->fetchAll();
+}
 ?>

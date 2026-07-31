@@ -25,6 +25,7 @@ $validPages = [
     'journal-settings', 'volumes', 'issues', 'sections',
     'submissions', 'manuscript', 'assign', 'publish',
     'editors', 'reviewers', 'editorial-board', 'assignments',
+    'reviewer-view',  // Added comma here
     'copyediting', 'proofreading', 'layout', 'doi', 'publication',
     'articles', 'article-view', 'create-article', 'create-submission',
     'users', 'roles',
@@ -55,6 +56,7 @@ if (in_array($action, $validPages) && $action != 'dashboard') {
         'publish' => 'publish.php',
         'editors' => 'editors.php',
         'reviewers' => 'reviewers.php',
+        'reviewer-view' => 'reviewer-view.php',  // Added comma here
         'editorial-board' => 'editorial-board.php',
         'assignments' => 'assignments.php',
         'copyediting' => 'copyediting.php',
@@ -222,7 +224,6 @@ function safeGetSetting($key, $default = null) {
         return $default;
     }
 }
-
 
 $roleColors = [
     'admin' => 'bg-red-100 text-red-700',

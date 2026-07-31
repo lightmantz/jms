@@ -1,99 +1,104 @@
 <?php
-// modules/admin/pages/manuscript.php - View/Edit Manuscript Details
+// modules/admin/pages/manuscript.php - View/Edit Manuscript
 if (!defined('SITE_URL')) {
     require_once __DIR__ . '/../../../includes/functions.php';
     require_once __DIR__ . '/../../../includes/auth.php';
 }
 
-requireRole(['admin']);
+$currentUser = requireRole(['admin']);
 
 $db = getDB();
-$message = '';
-$error = '';
-
 $manuscriptId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$isEdit = isset($_GET['edit']) ? true : false;
 
-if (!$manuscriptId) {
-    echo '<div class="bg-white rounded-xl shadow-card p-6 border border-gray-100/70">
-            <div class="text-center py-12">
-                <i class="fas fa-exclamation-triangle text-5xl text-yellow-400 mb-4"></i>
-                <p class="text-gray-500">No manuscript specified.</p>
-                <a href="/jms/admin?action=submissions" class="mt-3 inline-block bg-[#0b2b3f] text-white px-6 py-2 rounded-lg hover:bg-[#123a4f] transition">
-                    <i class="fas fa-arrow-left mr-2"></i> Back to Submissions
-                </a>
-            </div>
-        </div>';
-    exit;
+if ($manuscriptId <= 0) {
+    echo '<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">Invalid manuscript ID.</div>';
+    return;
 }
 
 // Get manuscript details
-$manuscript = getManuscript($manuscriptId);
+$stmt = $db->prepare("
+    SELECT m.*, 
+           u.full_name as author_name, 
+           u.email as author_email,
+           u.institution as author_institution,
+           e.full_name as editor_name,
+           v.volume_number,
+           i.issue_number,
+           i.publication_date as issue_publication_date
+    FROM manuscripts m
+    LEFT JOIN users u ON m.corresponding_author_id = u.id
+    LEFT JOIN users e ON m.editor_assigned_id = e.id
+    LEFT JOIN issues i ON m.issue_id = i.id
+    LEFT JOIN volumes v ON i.volume_id = v.id
+    WHERE m.id = ?
+");
+$stmt->execute([$manuscriptId]);
+$manuscript = $stmt->fetch();
+
 if (!$manuscript) {
-    echo '<div class="bg-white rounded-xl shadow-card p-6 border border-gray-100/70">
-            <div class="text-center py-12">
-                <i class="fas fa-file-alt text-5xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">Manuscript not found.</p>
-                <a href="/jms/admin?action=submissions" class="mt-3 inline-block bg-[#0b2b3f] text-white px-6 py-2 rounded-lg hover:bg-[#123a4f] transition">
-                    <i class="fas fa-arrow-left mr-2"></i> Back to Submissions
-                </a>
-            </div>
-        </div>';
-    exit;
+    echo '<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">Manuscript not found.</div>';
+    return;
 }
 
 // Get reviews
 $reviews = getManuscriptReviews($manuscriptId);
-
-// Get editors for assignment
-$editors = getEditors();
+$reviewerAssignments = getManuscriptReviewerAssignments($manuscriptId);
+$revisions = getManuscriptRevisions($manuscriptId);
+$communications = getManuscriptCommunications($manuscriptId);
+$files = getManuscriptFiles($manuscriptId);
+$keywords = getManuscriptKeywords($manuscriptId);
 
 // Handle status update
+$message = '';
+$error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-    $newStatus = $_POST['status'] ?? '';
-    $editorId = isset($_POST['editor_id']) ? (int)$_POST['editor_id'] : 0;
+    $newStatus = $_POST['status'];
+    $editorNotes = $_POST['editor_notes'] ?? '';
     
-    if ($newStatus && updateManuscriptStatus($manuscriptId, $newStatus, $currentUser['id'])) {
-        $message = 'Status updated successfully!';
-        
-        // If editor assigned
-        if ($editorId > 0 && $newStatus == 'under_review') {
-            assignEditor($manuscriptId, $editorId, $currentUser['id']);
-            $message .= ' Editor assigned.';
+    $allowedStatuses = ['draft', 'submitted', 'under_review', 'revision_required', 'accepted', 'rejected', 'published'];
+    if (in_array($newStatus, $allowedStatuses)) {
+        $stmt = $db->prepare("UPDATE manuscripts SET status = ?, editor_notes = ? WHERE id = ?");
+        if ($stmt->execute([$newStatus, $editorNotes, $manuscriptId])) {
+            $message = 'Manuscript status updated successfully!';
+            logAction($currentUser['id'], 'update_manuscript_status', 'manuscripts', $manuscriptId);
+            // Refresh data
+            $stmt = $db->prepare("SELECT * FROM manuscripts WHERE id = ?");
+            $stmt->execute([$manuscriptId]);
+            $manuscript = $stmt->fetch();
+        } else {
+            $error = 'Failed to update manuscript status.';
         }
-        
-        // Refresh manuscript data
-        $manuscript = getManuscript($manuscriptId);
     } else {
-        $error = 'Failed to update status.';
+        $error = 'Invalid status.';
     }
 }
 
-// Get all statuses for dropdown
-$statusOptions = [
-    'submitted' => 'New Submission',
-    'under_review' => 'Under Review',
-    'revision_required' => 'Revisions Required',
-    'accepted' => 'Accepted',
-    'rejected' => 'Rejected',
-    'published' => 'Published'
-];
+function getManuscriptKeywords($manuscriptId) {
+    $db = getDB();
+    $stmt = $db->prepare("
+        SELECT c.* 
+        FROM manuscript_keywords mk
+        JOIN categories c ON mk.category_id = c.id
+        WHERE mk.manuscript_id = ?
+    ");
+    $stmt->execute([$manuscriptId]);
+    return $stmt->fetchAll();
+}
+
 ?>
 <div class="bg-white rounded-xl shadow-card p-6 border border-gray-100/70">
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h2 class="text-2xl font-bold text-[#0b2b3f]"><?= $isEdit ? 'Edit' : 'View' ?> Manuscript</h2>
-            <p class="text-gray-500 text-sm mt-1"><?= htmlspecialchars(substr($manuscript['title'], 0, 80)) ?>...</p>
+            <h2 class="text-2xl font-bold text-[#0b2b3f]">Manuscript Details</h2>
+            <p class="text-gray-500 text-sm mt-1">View and manage manuscript information</p>
         </div>
         <div class="flex gap-3">
-            <a href="/jms/admin?action=submissions&subaction=<?= $manuscript['status'] ?>" class="text-indigo-600 hover:text-indigo-800 text-sm">
-                <i class="fas fa-arrow-left mr-1"></i> Back
+            <a href="/jms/?page=article&id=<?= $manuscript['id'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                <i class="fas fa-external-link-alt mr-1"></i> View Article
             </a>
-            <?php if ($manuscript['status'] == 'accepted'): ?>
-                <a href="/jms/admin?action=publish&id=<?= $manuscriptId ?>" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm">
-                    <i class="fas fa-check-circle mr-1"></i> Publish
-                </a>
-            <?php endif; ?>
+            <a href="/jms/admin?action=submissions" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Submissions
+            </a>
         </div>
     </div>
     <div class="h-1 w-20 bg-indigo-200 rounded-full mb-6"></div>
@@ -110,201 +115,222 @@ $statusOptions = [
         </div>
     <?php endif; ?>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left Column - Manuscript Details -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
         <div class="lg:col-span-2 space-y-6">
+            <!-- Basic Info -->
+            <div class="border-b border-gray-200 pb-4">
+                <h3 class="text-lg font-semibold text-[#0b2b3f] mb-3">Basic Information</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Title</label>
+                        <p class="text-gray-800 font-medium"><?= htmlspecialchars($manuscript['title']) ?></p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Author</label>
+                        <p class="text-gray-800"><?= htmlspecialchars($manuscript['author_name'] ?? 'Unknown') ?></p>
+                        <p class="text-sm text-gray-500"><?= htmlspecialchars($manuscript['author_email'] ?? '') ?></p>
+                        <p class="text-sm text-gray-500"><?= htmlspecialchars($manuscript['author_institution'] ?? '') ?></p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</label>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium <?= getStatusBadgeClass($manuscript['status']) ?>">
+                            <?= ucfirst(str_replace('_', ' ', $manuscript['status'])) ?>
+                        </span>
+                    </div>
+                    <?php if ($manuscript['doi']): ?>
+                        <div>
+                            <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">DOI</label>
+                            <p class="text-gray-800"><?= htmlspecialchars($manuscript['doi']) ?></p>
+                        </div>
+                    <?php endif; ?>
+                    <div>
+                        <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</label>
+                        <p class="text-gray-800"><?= formatDate($manuscript['submission_date'] ?? $manuscript['created_at']) ?></p>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Editor Assigned</label>
+                        <p class="text-gray-800"><?= htmlspecialchars($manuscript['editor_name'] ?? 'Not assigned') ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abstract -->
+            <?php if (!empty($manuscript['abstract'])): ?>
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="text-lg font-semibold text-[#0b2b3f] mb-2">Abstract</h3>
+                    <div class="text-gray-700 leading-relaxed text-sm">
+                        <?= nl2br(htmlspecialchars($manuscript['abstract'])) ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Keywords -->
+            <?php if (!empty($keywords)): ?>
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="text-lg font-semibold text-[#0b2b3f] mb-2">Keywords</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <?php foreach ($keywords as $keyword): ?>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                                <?= htmlspecialchars($keyword['name']) ?>
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Files -->
+            <?php if (!empty($files)): ?>
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="text-lg font-semibold text-[#0b2b3f] mb-2">Files</h3>
+                    <div class="space-y-2">
+                        <?php foreach ($files as $file): ?>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-file-<?= $file['file_type'] ?? 'alt' ?> text-gray-400"></i>
+                                    <span class="text-sm"><?= htmlspecialchars($file['file_name']) ?></span>
+                                    <span class="text-xs text-gray-400">(<?= number_format($file['file_size'] ?? 0) ?> bytes)</span>
+                                </div>
+                                <a href="<?= SITE_URL . $file['file_path'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Reviews -->
+            <?php if (!empty($reviews)): ?>
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="text-lg font-semibold text-[#0b2b3f] mb-2">Reviews</h3>
+                    <div class="space-y-3">
+                        <?php foreach ($reviews as $review): ?>
+                            <div class="p-3 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-medium"><?= htmlspecialchars($review['reviewer_name'] ?? 'Unknown') ?></span>
+                                    <span class="text-xs text-gray-500"><?= formatDate($review['created_at']) ?></span>
+                                </div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs font-medium text-gray-500">Recommendation:</span>
+                                    <span class="text-xs px-2 py-0.5 rounded-full <?= $review['recommendation'] == 'accept' ? 'bg-green-100 text-green-700' : ($review['recommendation'] == 'reject' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') ?>">
+                                        <?= ucfirst(str_replace('_', ' ', $review['recommendation'] ?? 'N/A')) ?>
+                                    </span>
+                                </div>
+                                <?php if (!empty($review['comments_to_editor'])): ?>
+                                    <p class="text-sm text-gray-600 mt-1"><?= nl2br(htmlspecialchars($review['comments_to_editor'])) ?></p>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Revisions -->
+            <?php if (!empty($revisions)): ?>
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="text-lg font-semibold text-[#0b2b3f] mb-2">Revisions</h3>
+                    <div class="space-y-2">
+                        <?php foreach ($revisions as $revision): ?>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div>
+                                    <span class="text-sm font-medium"><?= ucfirst($revision['revision_type'] ?? 'revision') ?></span>
+                                    <span class="text-xs text-gray-400 ml-2"><?= formatDate($revision['submitted_at']) ?></span>
+                                </div>
+                                <?php if ($revision['file_path']): ?>
+                                    <a href="<?= SITE_URL . $revision['file_path'] ?>" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-1 space-y-6">
             <!-- Status Update -->
-            <div class="bg-gray-50 rounded-xl p-4">
-                <form method="POST" class="flex flex-wrap gap-4 items-end">
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Update Status</label>
-                        <select name="status" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-[#0b2b3f] outline-none text-sm">
-                            <?php foreach ($statusOptions as $key => $label): ?>
-                            <option value="<?= $key ?>" <?= $manuscript['status'] == $key ? 'selected' : '' ?>>
-                                <?= $label ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <h3 class="font-semibold text-[#0b2b3f] mb-3">Update Status</h3>
+                <form method="POST" action="">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Status</label>
+                            <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition text-sm">
+                                <option value="draft" <?= $manuscript['status'] == 'draft' ? 'selected' : '' ?>>Draft</option>
+                                <option value="submitted" <?= $manuscript['status'] == 'submitted' ? 'selected' : '' ?>>Submitted</option>
+                                <option value="under_review" <?= $manuscript['status'] == 'under_review' ? 'selected' : '' ?>>Under Review</option>
+                                <option value="revision_required" <?= $manuscript['status'] == 'revision_required' ? 'selected' : '' ?>>Revision Required</option>
+                                <option value="accepted" <?= $manuscript['status'] == 'accepted' ? 'selected' : '' ?>>Accepted</option>
+                                <option value="rejected" <?= $manuscript['status'] == 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                                <option value="published" <?= $manuscript['status'] == 'published' ? 'selected' : '' ?>>Published</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Editor Notes</label>
+                            <textarea name="editor_notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition text-sm"><?= htmlspecialchars($manuscript['editor_notes'] ?? '') ?></textarea>
+                        </div>
+                        <button type="submit" name="update_status" class="w-full bg-[#0b2b3f] text-white px-4 py-2 rounded-lg hover:bg-[#123a4f] transition text-sm font-medium">
+                            <i class="fas fa-save mr-2"></i> Update Status
+                        </button>
                     </div>
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Assign Editor</label>
-                        <select name="editor_id" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-[#0b2b3f] outline-none text-sm">
-                            <option value="0">Unassigned</option>
-                            <?php foreach ($editors as $editor): ?>
-                            <option value="<?= $editor['id'] ?>" <?= $manuscript['editor_assigned_id'] == $editor['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($editor['full_name']) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <button type="submit" name="update_status" class="bg-[#0b2b3f] text-white px-6 py-2 rounded-lg hover:bg-[#123a4f] transition text-sm">
-                        <i class="fas fa-save mr-1"></i> Update
-                    </button>
                 </form>
             </div>
 
-            <!-- Manuscript Information -->
-            <div class="border border-gray-200 rounded-xl p-4">
-                <h3 class="font-semibold text-[#0b2b3f] mb-3">Manuscript Information</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Title</label>
-                        <p class="text-sm font-medium text-[#0b2b3f]"><?= htmlspecialchars($manuscript['title']) ?></p>
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Abstract</label>
-                        <p class="text-sm text-gray-600"><?= nl2br(htmlspecialchars($manuscript['abstract'] ?? 'No abstract provided')) ?></p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-xs font-medium text-gray-500 uppercase">Article Type</label>
-                            <p class="text-sm text-gray-600"><?= ucfirst(str_replace('_', ' ', $manuscript['article_type'] ?? 'N/A')) ?></p>
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium text-gray-500 uppercase">Submission Type</label>
-                            <p class="text-sm text-gray-600"><?= ucfirst(str_replace('_', ' ', $manuscript['submission_type'] ?? 'N/A')) ?></p>
-                        </div>
-                    </div>
-                    <?php if ($manuscript['doi']): ?>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">DOI</label>
-                        <p class="text-sm text-indigo-600"><?= htmlspecialchars($manuscript['doi']) ?></p>
-                    </div>
+            <!-- Quick Actions -->
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <h3 class="font-semibold text-[#0b2b3f] mb-3">Quick Actions</h3>
+                <div class="space-y-2">
+                    <?php if ($manuscript['status'] != 'published'): ?>
+                        <a href="/jms/admin?action=publish&id=<?= $manuscript['id'] ?>" class="block w-full text-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">
+                            <i class="fas fa-check-double mr-2"></i> Publish Article
+                        </a>
                     <?php endif; ?>
-                    <?php if ($manuscript['funding_source']): ?>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Funding Source</label>
-                        <p class="text-sm text-gray-600"><?= htmlspecialchars($manuscript['funding_source']) ?></p>
-                    </div>
+                    <?php if ($manuscript['status'] != 'rejected'): ?>
+                        <a href="/jms/admin?action=reject&id=<?= $manuscript['id'] ?>" onclick="return confirm('Are you sure you want to reject this manuscript?')" class="block w-full text-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm font-medium">
+                            <i class="fas fa-times mr-2"></i> Reject Article
+                        </a>
                     <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Author Information -->
-            <div class="border border-gray-200 rounded-xl p-4">
-                <h3 class="font-semibold text-[#0b2b3f] mb-3">Author Information</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Corresponding Author</label>
-                        <p class="text-sm font-medium text-[#0b2b3f]"><?= htmlspecialchars($manuscript['author_name'] ?? 'Unknown') ?></p>
-                        <p class="text-xs text-gray-500"><?= htmlspecialchars($manuscript['author_email'] ?? '') ?></p>
-                        <p class="text-xs text-gray-500"><?= htmlspecialchars($manuscript['author_institution'] ?? '') ?></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Reviews -->
-            <div class="border border-gray-200 rounded-xl p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-semibold text-[#0b2b3f]">Reviews</h3>
-                    <a href="/jms/admin?action=assign-reviewer&id=<?= $manuscriptId ?>" class="text-sm text-indigo-600 hover:underline">
-                        <i class="fas fa-user-plus mr-1"></i> Assign Reviewer
+                    <a href="/jms/admin?action=assign&id=<?= $manuscript['id'] ?>" class="block w-full text-center bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+                        <i class="fas fa-user-plus mr-2"></i> Assign Editor
+                    </a>
+                    <a href="/jms/admin?action=assign-reviewer&id=<?= $manuscript['id'] ?>" class="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium">
+                        <i class="fas fa-user-tie mr-2"></i> Assign Reviewers
                     </a>
                 </div>
-                <?php if (empty($reviews)): ?>
-                    <p class="text-sm text-gray-500">No reviews assigned yet.</p>
-                <?php else: ?>
-                    <div class="space-y-3">
-                        <?php foreach ($reviews as $review): ?>
-                        <div class="border-b border-gray-100 pb-3 last:border-0">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm font-medium"><?= htmlspecialchars($review['reviewer_name']) ?></p>
-                                    <p class="text-xs text-gray-500"><?= htmlspecialchars($review['reviewer_institution'] ?? '') ?></p>
-                                </div>
-                                <div class="text-right">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium <?= getStatusBadge($review['status']) ?>">
-                                        <?= ucfirst($review['status']) ?>
-                                    </span>
-                                    <?php if ($review['recommendation']): ?>
-                                        <p class="text-xs text-gray-500 mt-1">Recommendation: <?= ucfirst(str_replace('_', ' ', $review['recommendation'])) ?></p>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
             </div>
-        </div>
 
-        <!-- Right Column - Meta Information -->
-        <div class="space-y-6">
-            <!-- Status Card -->
-            <div class="border border-gray-200 rounded-xl p-4">
-                <h3 class="font-semibold text-[#0b2b3f] mb-3">Status Information</h3>
-                <div class="space-y-3">
+            <!-- Metadata -->
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <h3 class="font-semibold text-[#0b2b3f] mb-3">Metadata</h3>
+                <div class="space-y-2 text-sm">
                     <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Current Status</label>
-                        <p class="mt-1">
-                            <span class="px-3 py-1 rounded-full text-sm font-medium <?= getStatusBadge($manuscript['status']) ?>">
-                                <?= ucfirst(str_replace('_', ' ', $manuscript['status'])) ?>
-                            </span>
-                        </p>
+                        <span class="text-gray-500">Created:</span>
+                        <span class="text-gray-700"><?= formatDate($manuscript['created_at']) ?></span>
                     </div>
                     <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Submitted</label>
-                        <p class="text-sm text-gray-600"><?= formatDate($manuscript['submitted_at'] ?? $manuscript['submission_date']) ?></p>
+                        <span class="text-gray-500">Updated:</span>
+                        <span class="text-gray-700"><?= formatDate($manuscript['updated_at']) ?></span>
                     </div>
+                    <?php if ($manuscript['submitted_at']): ?>
+                        <div>
+                            <span class="text-gray-500">Submitted:</span>
+                            <span class="text-gray-700"><?= formatDate($manuscript['submitted_at']) ?></span>
+                        </div>
+                    <?php endif; ?>
                     <?php if ($manuscript['accepted_at']): ?>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Accepted</label>
-                        <p class="text-sm text-gray-600"><?= formatDate($manuscript['accepted_at']) ?></p>
-                    </div>
+                        <div>
+                            <span class="text-gray-500">Accepted:</span>
+                            <span class="text-gray-700"><?= formatDate($manuscript['accepted_at']) ?></span>
+                        </div>
                     <?php endif; ?>
                     <?php if ($manuscript['published_at']): ?>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Published</label>
-                        <p class="text-sm text-gray-600"><?= formatDate($manuscript['published_at']) ?></p>
-                    </div>
-                    <?php endif; ?>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Assigned Editor</label>
-                        <p class="text-sm text-gray-600"><?= htmlspecialchars($manuscript['editor_name'] ?? 'Unassigned') ?></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Publication Info -->
-            <?php if ($manuscript['status'] == 'published'): ?>
-            <div class="border border-gray-200 rounded-xl p-4">
-                <h3 class="font-semibold text-[#0b2b3f] mb-3">Publication Details</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Volume</label>
-                        <p class="text-sm text-gray-600"><?= $manuscript['volume_number'] ?? 'N/A' ?></p>
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Issue</label>
-                        <p class="text-sm text-gray-600"><?= $manuscript['issue_number'] ?? 'N/A' ?></p>
-                    </div>
-                    <?php if ($manuscript['page_start'] && $manuscript['page_end']): ?>
-                    <div>
-                        <label class="text-xs font-medium text-gray-500 uppercase">Pages</label>
-                        <p class="text-sm text-gray-600"><?= $manuscript['page_start'] ?> - <?= $manuscript['page_end'] ?></p>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <!-- Quick Actions -->
-            <div class="border border-gray-200 rounded-xl p-4">
-                <h3 class="font-semibold text-[#0b2b3f] mb-3">Quick Actions</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <a href="/jms/admin?action=assign-reviewer&id=<?= $manuscriptId ?>" class="text-center p-3 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition text-sm">
-                        <i class="fas fa-user-plus text-indigo-600"></i>
-                        <p class="text-xs mt-1">Assign Reviewer</p>
-                    </a>
-                    <a href="/jms/admin?action=edit&id=<?= $manuscriptId ?>" class="text-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition text-sm">
-                        <i class="fas fa-edit text-blue-600"></i>
-                        <p class="text-xs mt-1">Edit Details</p>
-                    </a>
-                    <?php if ($manuscript['status'] == 'accepted'): ?>
-                    <a href="/jms/admin?action=publish&id=<?= $manuscriptId ?>" class="text-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition text-sm col-span-2">
-                        <i class="fas fa-check-circle text-green-600"></i>
-                        <p class="text-xs mt-1">Publish Now</p>
-                    </a>
+                        <div>
+                            <span class="text-gray-500">Published:</span>
+                            <span class="text-gray-700"><?= formatDate($manuscript['published_at']) ?></span>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>

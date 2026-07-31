@@ -10,6 +10,24 @@ requireRole(['admin']);
 $db = getDB();
 $message = '';
 $error = '';
+$currentUser = getCurrentUser();
+
+// Get reviewer stats
+function getReviewerStats($reviewerId) {
+    $db = getDB();
+    
+    // Pending reviews
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM reviews WHERE reviewer_id = ? AND status IN ('invited', 'accepted')");
+    $stmt->execute([$reviewerId]);
+    $pending = $stmt->fetch()['count'] ?? 0;
+    
+    // Completed reviews
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM reviews WHERE reviewer_id = ? AND status = 'completed'");
+    $stmt->execute([$reviewerId]);
+    $completed = $stmt->fetch()['count'] ?? 0;
+    
+    return ['pending' => $pending, 'completed' => $completed];
+}
 
 // Handle actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -28,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->fetch()) {
             $error = 'This user is already a reviewer.';
         } else {
-            $stmt = $db->prepare("UPDATE users SET role = 'reviewer', institution = ?, bio = ? WHERE id = ?");
-            if ($stmt->execute([$affiliation, $expertise, $user_id])) {
+            $stmt = $db->prepare("UPDATE users SET role = 'reviewer', institution = ?, bio = ?, is_active = ? WHERE id = ?");
+            if ($stmt->execute([$affiliation, $expertise, $is_active, $user_id])) {
                 $message = 'Reviewer added successfully!';
                 logAction($currentUser['id'], 'add_reviewer', 'users', $user_id);
             } else {
@@ -72,8 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get all reviewers with stats
+// Get all reviewers
 $reviewers = getReviewers();
+
+// Add stats to each reviewer
+foreach ($reviewers as &$reviewer) {
+    $stats = getReviewerStats($reviewer['id']);
+    $reviewer['pending_reviews'] = $stats['pending'];
+    $reviewer['completed_reviews'] = $stats['completed'];
+}
 
 // Get available users (not already reviewers)
 $stmt = $db->query("
@@ -84,34 +109,30 @@ $stmt = $db->query("
 ");
 $availableUsers = $stmt->fetchAll();
 ?>
-<div class="bg-white rounded-xl shadow-card p-6 border border-gray-100/70">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-[#0b2b3f]">Reviewers</h2>
-            <p class="text-gray-500 text-sm mt-1">Manage journal reviewers and their assignments</p>
-        </div>
-        <div class="flex gap-3">
-            <a href="/jms/admin" class="text-indigo-600 hover:text-indigo-800 text-sm">
-                <i class="fas fa-arrow-left mr-1"></i> Back
-            </a>
-            <button onclick="openCreateModal()" class="bg-[#0b2b3f] text-white px-4 py-2 rounded-lg hover:bg-[#123a4f] transition text-sm">
-                <i class="fas fa-plus mr-1"></i> Add Reviewer
-            </button>
-        </div>
-    </div>
-    <div class="h-1 w-20 bg-indigo-200 rounded-full mb-6"></div>
-
+<!-- NO OUTER CONTAINER - The main dashboard provides it -->
+<div class="space-y-6">
     <?php if ($message): ?>
-        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-6">
+        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
             <i class="fas fa-check-circle mr-2"></i> <?= htmlspecialchars($message) ?>
         </div>
     <?php endif; ?>
 
     <?php if ($error): ?>
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             <i class="fas fa-exclamation-circle mr-2"></i> <?= htmlspecialchars($error) ?>
         </div>
     <?php endif; ?>
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-[#0b2b3f]">Reviewers</h2>
+            <p class="text-gray-500 text-sm mt-1">Manage journal reviewers and their assignments</p>
+        </div>
+        <button onclick="openCreateModal()" class="bg-[#0b2b3f] text-white px-4 py-2 rounded-lg hover:bg-[#123a4f] transition text-sm">
+            <i class="fas fa-plus mr-1"></i> Add Reviewer
+        </button>
+    </div>
+    <div class="h-1 w-20 bg-indigo-200 rounded-full"></div>
 
     <?php if (empty($reviewers)): ?>
         <div class="text-center py-12">
@@ -122,39 +143,29 @@ $availableUsers = $stmt->fetchAll();
             </button>
         </div>
     <?php else: ?>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Reviewer</th>
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Institution</th>
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Expertise</th>
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Pending</th>
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Completed</th>
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                        <th class="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($reviewers as $reviewer): ?>
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
-                        <td class="py-3 px-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <?php foreach ($reviewers as $reviewer): ?>
+            <div class="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-white">
+                <div class="flex items-start gap-3">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg flex-shrink-0">
+                        <?php 
+                        $initials = '';
+                        $nameParts = explode(' ', $reviewer['full_name']);
+                        foreach ($nameParts as $part) {
+                            if (!empty($part)) {
+                                $initials .= strtoupper(substr($part, 0, 1));
+                            }
+                        }
+                        echo htmlspecialchars(substr($initials, 0, 2));
+                        ?>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-start justify-between">
                             <div>
-                                <p class="font-medium text-[#0b2b3f] text-sm"><?= htmlspecialchars($reviewer['full_name']) ?></p>
-                                <p class="text-xs text-gray-400"><?= htmlspecialchars($reviewer['email']) ?></p>
+                                <h4 class="font-semibold text-[#0b2b3f]"><?= htmlspecialchars($reviewer['full_name']) ?></h4>
+                                <p class="text-xs text-indigo-600 font-medium">Reviewer</p>
                             </div>
-                        </td>
-                        <td class="py-3 px-4 text-sm text-gray-600"><?= htmlspecialchars($reviewer['institution'] ?? '-') ?></td>
-                        <td class="py-3 px-4 text-sm text-gray-600"><?= htmlspecialchars(substr($reviewer['bio'] ?? '-', 0, 30)) ?></td>
-                        <td class="py-3 px-4 text-sm text-yellow-600 font-medium"><?= $reviewer['pending_reviews'] ?? 0 ?></td>
-                        <td class="py-3 px-4 text-sm text-green-600 font-medium"><?= $reviewer['completed_reviews'] ?? 0 ?></td>
-                        <td class="py-3 px-4">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium <?= $reviewer['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' ?>">
-                                <?= $reviewer['is_active'] ? 'Active' : 'Inactive' ?>
-                            </span>
-                        </td>
-                        <td class="py-3 px-4">
-                            <div class="flex gap-2">
+                            <div class="flex gap-1">
                                 <button onclick="openEditModal(<?= htmlspecialchars(json_encode($reviewer)) ?>)" 
                                         class="text-indigo-600 hover:text-indigo-800 text-sm">
                                     <i class="fas fa-edit"></i>
@@ -164,11 +175,28 @@ $availableUsers = $stmt->fetchAll();
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                        </div>
+                        <?php if ($reviewer['institution']): ?>
+                            <p class="text-xs text-gray-500 mt-1"><?= htmlspecialchars($reviewer['institution']) ?></p>
+                        <?php endif; ?>
+                        <?php if ($reviewer['bio']): ?>
+                            <p class="text-xs text-gray-400 mt-1">Expertise: <?= htmlspecialchars(substr($reviewer['bio'], 0, 40)) ?><?= strlen($reviewer['bio']) > 40 ? '...' : '' ?></p>
+                        <?php endif; ?>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium <?= $reviewer['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' ?>">
+                                <?= $reviewer['is_active'] ? 'Active' : 'Inactive' ?>
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600">
+                                <i class="fas fa-clock mr-1"></i> <?= $reviewer['pending_reviews'] ?? 0 ?> Pending
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">
+                                <i class="fas fa-check mr-1"></i> <?= $reviewer['completed_reviews'] ?? 0 ?> Completed
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
         </div>
         <div class="mt-4 text-sm text-gray-400">
             Showing <?= count($reviewers) ?> reviewers

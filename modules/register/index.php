@@ -15,6 +15,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Registration logic here
     // ...
 }
+
+// Get sidebar data for right panel
+$editorialBoard = getEditorialBoard(3);
+$stats = getJournalStats();
+
+// Get latest news for sidebar
+$db = getDB();
+$stmt = $db->query("
+    SELECT n.*, u.full_name as author_name
+    FROM news n
+    LEFT JOIN users u ON n.author_id = u.id
+    WHERE n.status = 'published'
+    ORDER BY n.is_featured DESC, n.published_at DESC, n.created_at DESC
+    LIMIT 4
+");
+$sidebarNews = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -114,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         .logo-container {
-            width: 150px;
-            height: 150px;
+            width: 120px;
+            height: 120px;
             margin: 0 auto 12px;
             display: flex;
             align-items: center;
@@ -141,88 +157,239 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .register-subtitle {
             color: #64748b;
         }
+        
+        /* Sidebar Panel Styles */
+        .info-panel {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        }
+        
+        .info-panel .info-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.75rem 0;
+            transition: all 0.2s ease;
+        }
+        
+        .info-panel .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-panel .info-item:hover {
+            padding-left: 0.5rem;
+        }
+        
+        .info-panel .info-item a {
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.2s ease;
+        }
+        
+        .info-panel .info-item a:hover {
+            color: #ffffff;
+        }
+        
+        .info-panel .info-title {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .info-panel .info-value {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 1024px) {
+            .register-sidebar {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
     <?php include INCLUDES_PATH . 'header.php'; ?>
     
-    <div class="register-wrapper max-w-md mx-auto px-4 sm:px-6 py-12">
-        <div class="register-card p-8">
-            <!-- Logo -->
-            <div class="text-center mb-6">
-                <div class="logo-container">
-                    <img src="<?= SITE_URL ?>resources/images/tjr.png" alt="TIRP Logo">
-                </div>
-                <h1 class="text-2xl font-bold register-title">Create Account</h1>
-                <p class="text-gray-500 text-sm mt-1 register-subtitle">Register for a new TJRP account</p>
-            </div>
-            
-            <?php if ($error): ?>
-                <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-                    <i class="fas fa-exclamation-circle mr-2"></i> <?= htmlspecialchars($error) ?>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($success): ?>
-                <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
-                    <i class="fas fa-check-circle mr-2"></i> <?= htmlspecialchars($success) ?>
-                </div>
-            <?php endif; ?>
-            
-            <form method="POST" action="" class="space-y-4">
-                <div>
-                    <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                    <div class="relative">
-                        <i class="fas fa-user input-icon"></i>
-                        <input type="text" id="full_name" name="full_name" required 
-                               class="input-field"
-                               placeholder="John Doe">
+    <div class="register-wrapper max-w-6xl mx-auto px-4 sm:px-6 py-12">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <!-- Register Form -->
+            <div class="lg:col-span-3">
+                <div class="register-card p-8">
+                    <!-- Logo -->
+                    <div class="text-center mb-6">
+                        <div class="logo-container">
+                            <img src="<?= SITE_URL ?>resources/images/tjr.png" alt="TIRP Logo">
+                        </div>
+                        <h1 class="text-2xl font-bold register-title">Create Account</h1>
+                        <p class="text-gray-500 text-sm mt-1 register-subtitle">Register for a new TJRP account</p>
                     </div>
-                </div>
-                
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <div class="relative">
-                        <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="email" name="email" required 
-                               class="input-field"
-                               placeholder="you@example.com">
-                    </div>
-                </div>
-                
-                <div>
-                    <label for="institution" class="block text-sm font-medium text-gray-700 mb-1">Institution</label>
-                    <div class="relative">
-                        <i class="fas fa-building input-icon"></i>
-                        <input type="text" id="institution" name="institution" 
-                               class="input-field"
-                               placeholder="Your institution">
-                    </div>
-                </div>
-                
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <div class="relative">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="password" name="password" required 
-                               class="input-field"
-                               placeholder="Create a password (min 8 characters)">
-                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            <i id="passwordToggleIcon" class="fas fa-eye"></i>
+                    
+                    <?php if ($error): ?>
+                        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                            <i class="fas fa-exclamation-circle mr-2"></i> <?= htmlspecialchars($error) ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($success): ?>
+                        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+                            <i class="fas fa-check-circle mr-2"></i> <?= htmlspecialchars($success) ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <form method="POST" action="" class="space-y-4">
+                        <div>
+                            <label for="full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <div class="relative">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text" id="full_name" name="full_name" required 
+                                       class="input-field"
+                                       placeholder="John Doe">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <div class="relative">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input type="email" id="email" name="email" required 
+                                       class="input-field"
+                                       placeholder="you@example.com">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="institution" class="block text-sm font-medium text-gray-700 mb-1">Institution</label>
+                            <div class="relative">
+                                <i class="fas fa-building input-icon"></i>
+                                <input type="text" id="institution" name="institution" 
+                                       class="input-field"
+                                       placeholder="Your institution">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <div class="relative">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input type="password" id="password" name="password" required 
+                                       class="input-field"
+                                       placeholder="Create a password (min 8 characters)">
+                                <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <i id="passwordToggleIcon" class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Password must be at least 8 characters long</p>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-user-plus mr-2"></i> Create Account
                         </button>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Password must be at least 8 characters long</p>
+                    </form>
+                    
+                    <p class="text-center text-sm text-gray-600 mt-6">
+                        Already have an account? 
+                        <a href="<?= SITE_URL ?>?page=login" class="text-indigo-600 hover:text-indigo-800 font-medium">Sign in here</a>
+                    </p>
                 </div>
-                
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-user-plus mr-2"></i> Create Account
-                </button>
-            </form>
-            
-            <p class="text-center text-sm text-gray-600 mt-6">
-                Already have an account? 
-                <a href="<?= SITE_URL ?>?page=login" class="text-indigo-600 hover:text-indigo-800 font-medium">Sign in here</a>
-            </p>
+            </div>
+
+            <!-- Right Panel - Info Sidebar -->
+            <div class="lg:col-span-2 register-sidebar">
+                <div class="info-panel p-6 space-y-6">
+                    <div>
+                        <h4 class="text-white font-semibold text-lg flex items-center gap-2">
+                            <i class="fas fa-info-circle text-indigo-300"></i> Quick Info
+                        </h4>
+                    </div>
+
+                    <!-- Stats -->
+                    <div>
+                        <p class="info-title">Journal Statistics</p>
+                        <div class="grid grid-cols-2 gap-3 mt-2">
+                            <div class="bg-white/5 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white"><?= $stats['total_articles'] ?? 0 ?></p>
+                                <p class="text-xs text-white/60">Articles</p>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white"><?= $stats['total_users'] ?? 0 ?></p>
+                                <p class="text-xs text-white/60">Users</p>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white"><?= number_format($stats['total_views'] ?? 0) ?></p>
+                                <p class="text-xs text-white/60">Views</p>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white"><?= $stats['submissions_this_month'] ?? 0 ?></p>
+                                <p class="text-xs text-white/60">Submissions</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Editorial Board -->
+                    <div>
+                        <p class="info-title">Editorial Board</p>
+                        <div class="space-y-2 mt-2">
+                            <?php if (!empty($editorialBoard)): ?>
+                                <?php foreach ($editorialBoard as $member): ?>
+                                    <div class="info-item">
+                                        <p class="info-value"><?= htmlspecialchars($member['full_name'] ?? 'Unknown') ?></p>
+                                        <p class="text-xs text-white/50"><?= htmlspecialchars($member['position'] ?? 'Member') ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="info-item">
+                                    <p class="info-value">Prof. A. M. Kilonzo</p>
+                                    <p class="text-xs text-white/50">Editor-in-Chief</p>
+                                </div>
+                                <div class="info-item">
+                                    <p class="info-value">Dr. C. L. Mrema</p>
+                                    <p class="text-xs text-white/50">Managing Editor</p>
+                                </div>
+                            <?php endif; ?>
+                            <div class="pt-1">
+                                <a href="<?= SITE_URL ?>?page=editorial" class="text-xs text-indigo-300 hover:text-white transition">
+                                    View full board <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Latest News -->
+                    <div>
+                        <p class="info-title">Latest News</p>
+                        <div class="space-y-2 mt-2">
+                            <?php if (empty($sidebarNews)): ?>
+                                <div class="info-item">
+                                    <p class="info-value text-white/50">No news available.</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($sidebarNews as $item): ?>
+                                    <div class="info-item">
+                                        <a href="<?= SITE_URL ?>?page=news&id=<?= $item['id'] ?>" class="info-value hover:text-white transition">
+                                            <?= htmlspecialchars($item['title']) ?>
+                                        </a>
+                                        <p class="text-xs text-white/50"><?= formatDate($item['published_at'] ?? $item['created_at'], 'M d, Y') ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                            <div class="pt-1">
+                                <a href="<?= SITE_URL ?>?page=news" class="text-xs text-indigo-300 hover:text-white transition">
+                                    View all news <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Open Access -->
+                    <div class="bg-white/5 rounded-lg p-3 text-center">
+                        <i class="fas fa-unlock-alt text-2xl text-emerald-300 mb-1"></i>
+                        <p class="text-sm font-medium text-white">Open Access</p>
+                        <p class="text-xs text-white/60">All articles freely available</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -253,6 +420,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 card.style.opacity = '1';
                 card.style.transform = 'translateY(0)';
             }, 100);
+            
+            // Animate info panel
+            const panel = document.querySelector('.info-panel');
+            if (panel) {
+                panel.style.opacity = '0';
+                panel.style.transform = 'translateX(20px)';
+                setTimeout(function() {
+                    panel.style.transition = 'all 0.6s ease-out';
+                    panel.style.opacity = '1';
+                    panel.style.transform = 'translateX(0)';
+                }, 300);
+            }
         });
     </script>
 </body>

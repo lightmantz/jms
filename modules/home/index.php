@@ -18,6 +18,18 @@ $currentUser = getCurrentUser();
 
 // Get latest issue info
 $latestIssue = getCurrentIssue();
+
+// Get latest news for homepage sidebar
+$db = getDB();
+$stmt = $db->query("
+    SELECT n.*, u.full_name as author_name
+    FROM news n
+    LEFT JOIN users u ON n.author_id = u.id
+    WHERE n.status = 'published'
+    ORDER BY n.is_featured DESC, n.published_at DESC, n.created_at DESC
+    LIMIT 5
+");
+$sidebarNews = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,6 +54,13 @@ $latestIssue = getCurrentIssue();
         .hover-scale { transition: all 0.15s ease; }
         .hover-scale:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,20,40,0.08); }
         .pill { border-radius: 999px; }
+        .news-item {
+            transition: all 0.2s ease;
+        }
+        .news-item:hover {
+            background: #f8fafc;
+            padding-left: 0.75rem;
+        }
     </style>
 </head>
 <body class="antialiased text-gray-700">
@@ -289,6 +308,46 @@ $latestIssue = getCurrentIssue();
                     </ul>
                 </div>
 
+                <!-- News Section -->
+                <div class="bg-white rounded-xl shadow-card p-5 border border-gray-100/70">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-tirp flex items-center gap-2">
+                            <i class="fas fa-newspaper text-indigo-500"></i> Latest News
+                        </h4>
+                        <a href="<?= SITE_URL ?>?page=news" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                            View All
+                        </a>
+                    </div>
+                    
+                    <?php if (empty($sidebarNews)): ?>
+                        <p class="text-sm text-gray-400 text-center py-2">No news available.</p>
+                    <?php else: ?>
+                        <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                            <?php foreach ($sidebarNews as $item): ?>
+                                <div class="news-item border-b border-gray-100 pb-2 last:border-0 last:pb-0 pl-2 hover:pl-3 transition-all">
+                                    <a href="<?= SITE_URL ?>?page=news&id=<?= $item['id'] ?>" class="block hover:text-indigo-600 transition">
+                                        <div class="flex items-start gap-2">
+                                            <?php if ($item['is_featured']): ?>
+                                                <i class="fas fa-star text-yellow-500 text-xs mt-1 flex-shrink-0"></i>
+                                            <?php else: ?>
+                                                <i class="fas fa-circle text-indigo-300 text-[6px] mt-1.5 flex-shrink-0"></i>
+                                            <?php endif; ?>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-700 hover:text-indigo-600 transition leading-tight">
+                                                    <?= htmlspecialchars($item['title']) ?>
+                                                </p>
+                                                <p class="text-xs text-gray-400 mt-0.5">
+                                                    <?= formatDate($item['published_at'] ?? $item['created_at'], 'M d, Y') ?>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
                 <!-- Indexing -->
                 <div class="bg-white rounded-xl shadow-card p-5 border border-gray-100/70 flex items-center justify-between flex-wrap gap-2">
                     <div><i class="fas fa-link text-tirp"></i> <span class="font-medium text-sm">Crossref DOI</span></div>
@@ -297,6 +356,41 @@ $latestIssue = getCurrentIssue();
                     <span class="text-xs bg-gray-100 px-3 py-1 rounded-full">Indexing ready</span>
                 </div>
             </aside>
+        </div>
+
+        <!-- Categories -->
+        <?php if (!empty($categories)): ?>
+        <div class="mt-12">
+            <h2 class="text-2xl font-bold text-[#0b2b3f] mb-6 flex items-center gap-2">
+                <i class="fas fa-tags text-indigo-500"></i> Categories
+            </h2>
+            <div class="flex flex-wrap gap-2">
+                <?php foreach ($categories as $category): ?>
+                <a href="<?= SITE_URL ?>?page=search&category=<?= $category['id'] ?>" 
+                   class="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition">
+                    <?= htmlspecialchars($category['name']) ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Call to Action -->
+        <div class="mt-12 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-8 border border-indigo-100">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div>
+                    <h3 class="text-2xl font-bold text-[#0b2b3f]">Ready to Submit Your Research?</h3>
+                    <p class="text-gray-600 mt-1">Join our community of researchers and practitioners.</p>
+                </div>
+                <div class="flex gap-4">
+                    <a href="<?= SITE_URL ?>?page=submit" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-sm whitespace-nowrap">
+                        <i class="fas fa-upload mr-2"></i> Submit Now
+                    </a>
+                    <a href="<?= SITE_URL ?>?page=author-guidelines" class="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold border border-indigo-300 hover:bg-indigo-50 transition whitespace-nowrap">
+                        <i class="fas fa-book mr-2"></i> Guidelines
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
