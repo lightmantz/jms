@@ -15,6 +15,9 @@ if (function_exists('isLoggedIn') && isLoggedIn()) {
 $error = '';
 $success = '';
 
+// Check for redirect parameter
+$redirectUrl = isset($_GET['redirect']) ? $_GET['redirect'] : null;
+
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
@@ -34,9 +37,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Login successful
                     loginUser($user);
                     
-                    // Redirect to dashboard
-                    $dashboardUrl = getDashboardUrl($user);
-                    header('Location: ' . $dashboardUrl);
+                    // Redirect to dashboard or the intended page
+                    if ($redirectUrl) {
+                        header('Location: ' . urldecode($redirectUrl));
+                    } else {
+                        $dashboardUrl = getDashboardUrl($user);
+                        header('Location: ' . $dashboardUrl);
+                    }
                     exit;
                 } else {
                     $error = 'Invalid email or password. Please try again.';
