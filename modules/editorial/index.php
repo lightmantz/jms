@@ -5,6 +5,62 @@ require_once __DIR__ . '/../../includes/init.php';
 // Get editorial board members
 $boardMembers = getEditorialBoard();
 
+// If no board members in database, use fallback data
+if (empty($boardMembers)) {
+    $boardMembers = [
+        [
+            'id' => 1,
+            'full_name' => 'Prof. A. M. Kilonzo',
+            'position' => 'Editor-in-Chief',
+            'institution' => 'University of Dar es Salaam',
+            'expertise' => 'Rehabilitation Medicine, Neurological Rehabilitation',
+            'biography' => 'Professor of Rehabilitation Medicine with over 25 years of experience in neurological rehabilitation and health systems strengthening.',
+            'email' => 'kilonzo@example.com',
+            'avatar' => null
+        ],
+        [
+            'id' => 2,
+            'full_name' => 'Dr. C. L. Mrema',
+            'position' => 'Managing Editor',
+            'institution' => 'Muhimbili University of Health and Allied Sciences',
+            'expertise' => 'Physical Therapy, Musculoskeletal Rehabilitation',
+            'biography' => 'Senior Lecturer and researcher specializing in physical therapy and musculoskeletal rehabilitation in resource-limited settings.',
+            'email' => 'mrema@example.com',
+            'avatar' => null
+        ],
+        [
+            'id' => 3,
+            'full_name' => 'Prof. R. S. Ngowi',
+            'position' => 'Associate Editor',
+            'institution' => 'Kilimanjaro Christian Medical University College',
+            'expertise' => 'Occupational Therapy, Community-Based Rehabilitation',
+            'biography' => 'Associate Professor with expertise in occupational therapy, community-based rehabilitation, and disability studies.',
+            'email' => 'ngowi@example.com',
+            'avatar' => null
+        ],
+        [
+            'id' => 4,
+            'full_name' => 'Dr. S. A. Mkumbwa',
+            'position' => 'Editorial Board Member',
+            'institution' => 'University of Zambia',
+            'expertise' => 'Speech Therapy, Communication Disorders',
+            'biography' => 'Speech and language therapist with research interests in communication disorders and rehabilitation in Southern Africa.',
+            'email' => 'mkumbwa@example.com',
+            'avatar' => null
+        ],
+        [
+            'id' => 5,
+            'full_name' => 'Prof. M. J. Ndeki',
+            'position' => 'Editorial Board Member',
+            'institution' => 'University of Zimbabwe',
+            'expertise' => 'Rehabilitation Psychology, Mental Health',
+            'biography' => 'Professor of Rehabilitation Psychology with focus on mental health rehabilitation and psychosocial support in post-conflict settings.',
+            'email' => 'ndeki@example.com',
+            'avatar' => null
+        ]
+    ];
+}
+
 // Group by position (optional)
 $positions = [];
 foreach ($boardMembers as $member) {
@@ -36,6 +92,30 @@ $stmt = $db->query("
     LIMIT 5
 ");
 $sidebarNews = $stmt->fetchAll();
+
+// If no news, use placeholder
+if (empty($sidebarNews)) {
+    $sidebarNews = [
+        [
+            'id' => 1,
+            'title' => 'TIRP Announces New Editorial Board Members',
+            'published_at' => date('Y-m-d H:i:s'),
+            'is_featured' => 1
+        ],
+        [
+            'id' => 2,
+            'title' => 'Call for Papers: Special Issue on Rehabilitation in Africa',
+            'published_at' => date('Y-m-d H:i:s', strtotime('-5 days')),
+            'is_featured' => 0
+        ],
+        [
+            'id' => 3,
+            'title' => 'TIRP Now Indexed in DOAJ',
+            'published_at' => date('Y-m-d H:i:s', strtotime('-10 days')),
+            'is_featured' => 0
+        ]
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -88,107 +168,99 @@ $sidebarNews = $stmt->fetchAll();
                     </h1>
                     <div class="h-1 w-20 bg-indigo-200 rounded-full mt-2 mb-6"></div>
                     
-                    <?php if (empty($boardMembers)): ?>
-                        <div class="text-center py-12">
-                            <i class="fas fa-users text-6xl text-gray-300 mb-4"></i>
-                            <h3 class="text-xl font-semibold text-gray-600">Editorial Board Coming Soon</h3>
-                            <p class="text-gray-500">Our editorial board members will be listed here.</p>
-                        </div>
-                    <?php else: ?>
-                        <!-- Editorial Board Introduction -->
-                        <div class="mb-8 p-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100">
-                            <p class="text-gray-700 leading-relaxed">
-                                The <strong>Tanzania Journal of Rehabilitation Practice (TIRP)</strong> is guided by a distinguished 
-                                editorial board comprising experts in rehabilitation science from across the globe. 
-                                Our board members provide strategic direction, maintain academic standards, and ensure 
-                                the quality and integrity of our publications.
-                            </p>
-                        </div>
-                        
-                        <!-- Board Members by Position -->
-                        <?php foreach ($positions as $position => $members): ?>
-                            <?php if (!empty($members)): ?>
-                                <div class="mb-10">
-                                    <h2 class="text-xl font-semibold text-[#0b2b3f] border-b-2 border-indigo-100 pb-3 mb-5 flex items-center gap-2">
-                                        <span class="bg-indigo-100 text-indigo-700 text-sm px-3 py-1 rounded-full">
-                                            <?= count($members) ?>
-                                        </span>
-                                        <?= htmlspecialchars($position) ?>
-                                    </h2>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <?php foreach ($members as $member): ?>
-                                            <div class="board-member-card bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200">
-                                                <div class="flex items-start gap-4">
-                                                    <!-- Avatar -->
-                                                    <div class="flex-shrink-0">
-                                                        <?php if (!empty($member['avatar'])): ?>
-                                                            <img src="<?= SITE_URL . $member['avatar'] ?>" alt="<?= htmlspecialchars($member['full_name']) ?>" class="w-16 h-16 rounded-full object-cover border-2 border-indigo-200">
-                                                        <?php else: ?>
-                                                            <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-semibold">
-                                                                <?= strtoupper(substr($member['full_name'] ?? 'U', 0, 1)) ?>
-                                                            </div>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                    
-                                                    <div class="flex-1 min-w-0">
-                                                        <h3 class="font-semibold text-[#0b2b3f] text-lg">
-                                                            <?= htmlspecialchars($member['full_name'] ?? 'Unknown') ?>
-                                                        </h3>
-                                                        <?php if (!empty($member['position']) && $member['position'] !== $position): ?>
-                                                            <p class="text-sm text-indigo-600 font-medium">
-                                                                <?= htmlspecialchars($member['position']) ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($member['institution'])): ?>
-                                                            <p class="text-sm text-gray-600 mt-1">
-                                                                <i class="fas fa-university text-gray-400 mr-1"></i>
-                                                                <?= htmlspecialchars($member['institution']) ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($member['expertise'])): ?>
-                                                            <p class="text-xs text-gray-500 mt-2">
-                                                                <span class="font-medium">Expertise:</span> 
-                                                                <?= htmlspecialchars($member['expertise']) ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($member['biography'])): ?>
-                                                            <p class="text-sm text-gray-600 mt-2 line-clamp-3">
-                                                                <?= truncateText($member['biography'], 120) ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($member['email'])): ?>
-                                                            <a href="mailto:<?= htmlspecialchars($member['email']) ?>" class="text-xs text-indigo-500 hover:text-indigo-700 mt-2 inline-block">
-                                                                <i class="fas fa-envelope mr-1"></i> Email
-                                                            </a>
-                                                        <?php endif; ?>
-                                                    </div>
+                    <!-- Editorial Board Introduction -->
+                    <div class="mb-8 p-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-100">
+                        <p class="text-gray-700 leading-relaxed">
+                            The <strong>Tanzania Journal of Rehabilitation Practice (TIRP)</strong> is guided by a distinguished 
+                            editorial board comprising experts in rehabilitation science from across the globe. 
+                            Our board members provide strategic direction, maintain academic standards, and ensure 
+                            the quality and integrity of our publications.
+                        </p>
+                    </div>
+                    
+                    <!-- Board Members by Position -->
+                    <?php foreach ($positions as $position => $members): ?>
+                        <?php if (!empty($members)): ?>
+                            <div class="mb-10">
+                                <h2 class="text-xl font-semibold text-[#0b2b3f] border-b-2 border-indigo-100 pb-3 mb-5 flex items-center gap-2">
+                                    <span class="bg-indigo-100 text-indigo-700 text-sm px-3 py-1 rounded-full">
+                                        <?= count($members) ?>
+                                    </span>
+                                    <?= htmlspecialchars($position) ?>
+                                </h2>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <?php foreach ($members as $member): ?>
+                                        <div class="board-member-card bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200">
+                                            <div class="flex items-start gap-4">
+                                                <!-- Avatar -->
+                                                <div class="flex-shrink-0">
+                                                    <?php if (!empty($member['avatar'])): ?>
+                                                        <img src="<?= SITE_URL . $member['avatar'] ?>" alt="<?= htmlspecialchars($member['full_name']) ?>" class="w-16 h-16 rounded-full object-cover border-2 border-indigo-200">
+                                                    <?php else: ?>
+                                                        <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-semibold">
+                                                            <?= strtoupper(substr($member['full_name'] ?? 'U', 0, 1)) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                                
+                                                <div class="flex-1 min-w-0">
+                                                    <h3 class="font-semibold text-[#0b2b3f] text-lg">
+                                                        <?= htmlspecialchars($member['full_name'] ?? 'Unknown') ?>
+                                                    </h3>
+                                                    <?php if (!empty($member['position']) && $member['position'] !== $position): ?>
+                                                        <p class="text-sm text-indigo-600 font-medium">
+                                                            <?= htmlspecialchars($member['position']) ?>
+                                                        </p>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($member['institution'])): ?>
+                                                        <p class="text-sm text-gray-600 mt-1">
+                                                            <i class="fas fa-university text-gray-400 mr-1"></i>
+                                                            <?= htmlspecialchars($member['institution']) ?>
+                                                        </p>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($member['expertise'])): ?>
+                                                        <p class="text-xs text-gray-500 mt-2">
+                                                            <span class="font-medium">Expertise:</span> 
+                                                            <?= htmlspecialchars($member['expertise']) ?>
+                                                        </p>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($member['biography'])): ?>
+                                                        <p class="text-sm text-gray-600 mt-2 line-clamp-3">
+                                                            <?= truncateText($member['biography'], 120) ?>
+                                                        </p>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($member['email'])): ?>
+                                                        <a href="mailto:<?= htmlspecialchars($member['email']) ?>" class="text-xs text-indigo-500 hover:text-indigo-700 mt-2 inline-block">
+                                                            <i class="fas fa-envelope mr-1"></i> Email
+                                                        </a>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
-                                        <?php endforeach; ?>
-                                    </div>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                        
-                        <!-- Join Editorial Board -->
-                        <div class="mt-10 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
-                            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-[#0b2b3f] flex items-center gap-2">
-                                        <i class="fas fa-user-plus text-indigo-500"></i> 
-                                        Interested in Joining Our Editorial Board?
-                                    </h3>
-                                    <p class="text-gray-600 text-sm">
-                                        We welcome applications from qualified researchers and practitioners in rehabilitation sciences.
-                                    </p>
-                                </div>
-                                <a href="<?= SITE_URL ?>?page=contact" class="inline-flex items-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200 whitespace-nowrap">
-                                    <i class="fas fa-paper-plane mr-2"></i> Contact Us
-                                </a>
                             </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                    
+                    <!-- Join Editorial Board -->
+                    <div class="mt-10 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-[#0b2b3f] flex items-center gap-2">
+                                    <i class="fas fa-user-plus text-indigo-500"></i> 
+                                    Interested in Joining Our Editorial Board?
+                                </h3>
+                                <p class="text-gray-600 text-sm">
+                                    We welcome applications from qualified researchers and practitioners in rehabilitation sciences.
+                                </p>
+                            </div>
+                            <a href="<?= SITE_URL ?>?page=contact" class="inline-flex items-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200 whitespace-nowrap">
+                                <i class="fas fa-paper-plane mr-2"></i> Contact Us
+                            </a>
                         </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
@@ -266,7 +338,7 @@ $sidebarNews = $stmt->fetchAll();
                                 <div class="news-item border-b border-gray-100 pb-2 last:border-0 last:pb-0 pl-2 hover:pl-3 transition-all">
                                     <a href="<?= SITE_URL ?>?page=news&id=<?= $item['id'] ?>" class="block hover:text-indigo-600 transition">
                                         <div class="flex items-start gap-2">
-                                            <?php if ($item['is_featured']): ?>
+                                            <?php if (!empty($item['is_featured'])): ?>
                                                 <i class="fas fa-star text-yellow-500 text-xs mt-1 flex-shrink-0"></i>
                                             <?php else: ?>
                                                 <i class="fas fa-circle text-indigo-300 text-[6px] mt-1.5 flex-shrink-0"></i>

@@ -544,6 +544,9 @@ function getCategories() {
 /**
  * Get editorial board members
  */
+/**
+ * Get editorial board members
+ */
 function getEditorialBoard($limit = null) {
     $db = getDB();
     $sql = "SELECT eb.*, u.full_name, u.email, u.institution, u.bio, u.avatar 

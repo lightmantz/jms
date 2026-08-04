@@ -8,6 +8,24 @@ if (!function_exists('isLoggedIn')) {
 $currentUser = getCurrentUser();
 $unreadCount = $currentUser ? getUnreadNotifications($currentUser['id']) : 0;
 $notifications = $currentUser ? getNotifications($currentUser['id'], 5) : [];
+
+// Get current page from URL
+$currentPage = isset($_GET['page']) ? $_GET['page'] : 'home';
+
+// // Function to check if a page is active
+// function isActivePage($page) {
+//     global $currentPage;
+//     return $currentPage === $page;
+// }
+
+// Function to get active class
+function getActiveClass($page, $classes = '') {
+    $baseClass = 'transition';
+    if (isActivePage($page)) {
+        return $baseClass . ' text-[#0b2b3f] font-semibold border-b-2 border-indigo-500 pb-1 ' . $classes;
+    }
+    return $baseClass . ' text-gray-500 hover:text-[#0b2b3f] ' . $classes;
+}
 ?>
 <header class="bg-white border-b border-gray-200/80 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
@@ -22,11 +40,21 @@ $notifications = $currentUser ? getNotifications($currentUser['id'], 5) : [];
             </a>
         </div>
         <nav class="flex items-center gap-6 text-sm font-medium">
-            <a href="<?= SITE_URL ?>?page=home" class="text-[#0b2b3f] hover:text-indigo-700 transition">Home</a>
-            <a href="<?= SITE_URL ?>?page=about" class="text-gray-500 hover:text-[#0b2b3f] transition">About</a>
-            <a href="<?= SITE_URL ?>?page=editorial" class="text-gray-500 hover:text-[#0b2b3f] transition">Editorial Board</a>
-            <a href="<?= SITE_URL ?>?page=archive" class="text-gray-500 hover:text-[#0b2b3f] transition">Archive</a>
-            <a href="<?= SITE_URL ?>?page=search" class="text-gray-500 hover:text-[#0b2b3f] transition"><i class="fas fa-search mr-1 text-xs"></i> Search</a>
+            <a href="<?= SITE_URL ?>?page=home" class="<?= getActiveClass('home') ?>">
+                Home
+            </a>
+            <a href="<?= SITE_URL ?>?page=about" class="<?= getActiveClass('about') ?>">
+                About
+            </a>
+            <a href="<?= SITE_URL ?>?page=editorial" class="<?= getActiveClass('editorial') ?>">
+                Editorial Board
+            </a>
+            <a href="<?= SITE_URL ?>?page=archive" class="<?= getActiveClass('archive') ?>">
+                Archive
+            </a>
+            <a href="<?= SITE_URL ?>?page=search" class="<?= getActiveClass('search') ?>">
+                <i class="fas fa-search mr-1 text-xs"></i> Search
+            </a>
             
             <?php if (isLoggedIn()): ?>
                 <!-- Notifications Dropdown -->
@@ -90,8 +118,12 @@ $notifications = $currentUser ? getNotifications($currentUser['id'], 5) : [];
                     </div>
                 </div>
             <?php else: ?>
-                <a href="<?= SITE_URL ?>?page=login" class="text-gray-500 hover:text-[#0b2b3f] transition">Login</a>
-                <a href="<?= SITE_URL ?>?page=register" class="bg-[#0b2b3f] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#123a4f] transition shadow-sm">Register</a>
+                <a href="<?= SITE_URL ?>?page=login" class="<?= getActiveClass('login') ?>">
+                    Login
+                </a>
+                <a href="<?= SITE_URL ?>?page=register" class="bg-[#0b2b3f] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#123a4f] transition shadow-sm <?= isActivePage('register') ? 'ring-2 ring-indigo-400 ring-offset-2' : '' ?>">
+                    Register
+                </a>
             <?php endif; ?>
         </nav>
     </div>
